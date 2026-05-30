@@ -43,15 +43,22 @@ const AMOUNT_REGEX = /^(?:0|[1-9]\d*)(?:\.\d{1,7})?$/
 /**
  * POST /wallet/create
  * Body: { user_id: number }
- * Flow: validate -> ensure KYC exists -> generate keys -> fund via friendbot -> encrypt secret -> persist -> 201
+ * Protection: jwtMiddleware
+ * Flow: validate -> ensure JWT user_id matches body -> ensure KYC exists -> generate keys -> fund via friendbot -> encrypt secret -> persist -> 201
  */
-walletRouter.post('/create', async (req: Request, res: Response) => {
+walletRouter.post('/create', jwtMiddleware, async (req: Request, res: Response) => {
 	// validate body
 	const parsed = CreateWalletBody.safeParse(req.body)
 	if (!parsed.success) {
 		return res.status(400).json({ error: 'Invalid user ID' })
 	}
 	const { user_id } = parsed.data
+
+	// Verify user_id in body matches the authenticated JWT user_id
+	const authReq = req as AuthRequest
+	if (Number.parseInt(authReq.user?.user_id || '0', 10) !== user_id) {
+		return res.status(403).json({ error: 'Forbidden' })
+	}
 
 	try {
 		const db = await connectDB()

@@ -244,6 +244,28 @@ import { app } from '../../src/index'
 describe('POST /wallet/create', () => {
 	beforeEach(() => {
 		jest.clearAllMocks()
+		JWT_BEHAVIOR = 'success'
+		AUTH_USER_ID = '1'
+	})
+
+	it('returns 401 when JWT is missing or invalid', async () => {
+		JWT_BEHAVIOR = 'fail'
+
+		const res = await request(app).post('/wallet/create').send({ user_id: 1 })
+
+		expect(res.status).toBe(401)
+		expect(res.body).toEqual({ error: 'unauthorized' })
+		expect(insertAccountMock).not.toHaveBeenCalled()
+	})
+
+	it('returns 403 when JWT user_id does not match body user_id', async () => {
+		AUTH_USER_ID = '99'
+
+		const res = await request(app).post('/wallet/create').send({ user_id: 1 })
+
+		expect(res.status).toBe(403)
+		expect(res.body).toEqual({ error: 'Forbidden' })
+		expect(insertAccountMock).not.toHaveBeenCalled()
 	})
 
 	it('returns 201 and persists encrypted secret on success', async () => {
@@ -271,6 +293,7 @@ describe('POST /wallet/create', () => {
 	})
 
 	it('returns 400 when user_id does not exist in kyc', async () => {
+		AUTH_USER_ID = '999'
 		findKycByIdMock.mockResolvedValueOnce(null)
 
 		const res = await request(app).post('/wallet/create').send({ user_id: 999 })
@@ -281,6 +304,7 @@ describe('POST /wallet/create', () => {
 	})
 
 	it('returns 400 when friendbot funding fails', async () => {
+		AUTH_USER_ID = '2'
 		findKycByIdMock.mockResolvedValueOnce({
 			id: 2,
 			name: 'Bob',
@@ -300,6 +324,7 @@ describe('POST /wallet/create', () => {
 		const original = process.env.ENCRYPTION_KEY
 		process.env.ENCRYPTION_KEY = 'short' // invalid
 
+		AUTH_USER_ID = '3'
 		findKycByIdMock.mockResolvedValueOnce({
 			id: 3,
 			name: 'Eve',

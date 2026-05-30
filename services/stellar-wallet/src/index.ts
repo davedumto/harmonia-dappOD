@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
+import { jwtMiddleware } from './auth/jwt'
 import envs from './config/envs'
 import { logError, logger, loggerMiddleware } from './middlewares/logger'
 import { authLimiter, kycLimiter, walletLimiter } from './middlewares/rate-limit'
@@ -34,7 +35,8 @@ app.use('/auth', authLoginRouter)
 app.use('/kyc', kycLimiter, kycRouter)
 app.use('/kyc', kycLimiter, kycVerifyRouter)
 
-app.use('/wallet', walletLimiter, walletRouter)
+// All wallet endpoints require JWT authentication
+app.use('/wallet', walletLimiter, jwtMiddleware, walletRouter)
 
 // 404 Not Found Handler
 app.use((_req: Request, res: Response) => {
